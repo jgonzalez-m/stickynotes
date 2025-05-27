@@ -13,6 +13,11 @@
 src/
 ├── gtk/
 │   └── help-overlay.ui          # Keyboard shortcuts overlay UI
+├── stickynotes/
+│   ├── css/
+│   │   ├── note.css             # CSS styling for sticky notes
+│   │   └── preview.css          # CSS styling for note previews
+│   └── ...                      # Other stickynotes components
 ├── __init__.py                  # Package initialization
 ├── main.py                      # Application entry point
 ├── window.py                    # Main window implementation
@@ -56,6 +61,8 @@ StickyNotes uses the Meson build system with the following configuration:
   <gresource prefix="/org/gnome/StickyNotes">
     <file preprocess="xml-stripblanks">window.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file>stickynotes/css/note.css</file>
+    <file>stickynotes/css/preview.css</file>
   </gresource>
   ```
   This configuration bundles the UI files (window.ui and help-overlay.ui) into the application's resource system, making them available at runtime under the `/org/gnome/StickyNotes` prefix.
@@ -63,7 +70,9 @@ StickyNotes uses the Meson build system with the following configuration:
 - **UI Resources**:
   - `window.ui`: Main application window layout
   - `gtk/help-overlay.ui`: Keyboard shortcuts help overlay
-  These UI files are preprocessed during build to optimize size and performance.
+  - `stickynotes/css/note.css`: Styling for individual sticky notes
+  - `stickynotes/css/preview.css`: Styling for note previews in the main window
+  These UI files are preprocessed during build to optimize size and performance, while CSS files are included as-is.
 
 ### Storage System
 The application uses a JSON-based storage system for managing notes. For detailed information about the storage format and implementation, see [STORAGE.md](STORAGE.md).
@@ -135,16 +144,19 @@ When adding new user-visible strings:
 ## User Interface
 
 ### Main Window
-- **Note List**: Displays all created sticky notes
+- **Note List**: Displays all created sticky notes with titles and previews
 - **Create Note**: Button to create a new sticky note
 - **Note Editor**: Rich text editor for note content
+- **Title Management**: Automatic title extraction from first line of content
 - **Color Picker**: Choose note background color
 - **Settings**: Configure application preferences
 
 ### Features
 - Create, edit, and delete sticky notes
+- Note titles for better organization
 - Rich text formatting
 - Customizable note colors
+- Consistent styling via external CSS
 - Automatic note saving
 - Desktop integration
 
