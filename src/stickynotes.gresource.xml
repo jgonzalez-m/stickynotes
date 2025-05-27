@@ -3,5 +3,7 @@
   <gresource prefix="/org/gnome/StickyNotes">
     <file preprocess="xml-stripblanks">stickynotes/window.ui</file>
     <file preprocess="xml-stripblanks">stickynotes/gtk/help-overlay.ui</file>
+    <file>stickynotes/css/note.css</file>
+    <file>stickynotes/css/preview.css</file>
   </gresource>
 </gresources>

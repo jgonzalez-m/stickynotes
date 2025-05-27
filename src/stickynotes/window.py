@@ -272,7 +272,6 @@ class StickyNotesWindow(Adw.ApplicationWindow):
 
 class NotePreviewCard(Gtk.FlowBoxChild):
     _base_css_applied = False
-    _color_css_provider = None
     _color_styles = {
         'yellow': '#ffeb3b',
         'pink': '#f8d7da',
@@ -287,6 +286,11 @@ class NotePreviewCard(Gtk.FlowBoxChild):
         self.note = note
         self.note_id = note.note_id
         
+        # Si los estilos base no se han aplicado aún
+        if not NotePreviewCard._base_css_applied:
+            self.load_css()
+            NotePreviewCard._base_css_applied = True
+        
         self.set_visible(True)
         self.set_can_focus(True)
         
@@ -299,6 +303,21 @@ class NotePreviewCard(Gtk.FlowBoxChild):
         self.add_controller(click)
         
         self.show()
+        
+    def load_css(self):
+        """Cargar estilos CSS desde el archivo"""
+        try:
+            css_provider = Gtk.CssProvider()
+            css_file = Gio.File.new_for_path('/home/kooke/Proyectos/stickynotes/src/stickynotes/css/preview.css')
+            css_provider.load_from_file(css_file)
+            Gtk.StyleContext.add_provider_for_display(
+                Gdk.Display.get_default(),
+                css_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+            print("Preview CSS loaded successfully")
+        except Exception as e:
+            print(f"Error loading preview CSS: {e}")
 
     def on_click_pressed(self, gesture, n_press, x, y):
         self.activate()
@@ -322,17 +341,33 @@ class NotePreviewCard(Gtk.FlowBoxChild):
         self.title_box.set_margin_start(8)
         self.title_box.set_margin_end(8)
         
+        # Container para título y fecha
+        self.header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.header_box.set_spacing(2)
+        
+        # Label para el título
+        self.title_label = Gtk.Label()
+        self.title_label.set_halign(Gtk.Align.START)
+        self.title_label.set_hexpand(True)
+        self.title_label.add_css_class('title')
+        
+        # Label para la fecha
         self.date_label = Gtk.Label()
         self.date_label.set_halign(Gtk.Align.START)
         self.date_label.set_hexpand(True)
         self.date_label.add_css_class('caption')
         self.date_label.add_css_class('dim-label')
         
+        # Agregar labels al header box
+        self.header_box.append(self.title_label)
+        self.header_box.append(self.date_label)
+        
         self.color_indicator = Gtk.Box()
         self.color_indicator.set_size_request(16, 16)
         self.color_indicator.add_css_class('color-indicator')
         
-        self.title_box.append(self.date_label)
+        # Agregar header_box y color_indicator al title_box
+        self.title_box.append(self.header_box)
         self.title_box.append(self.color_indicator)
         
         scrolled = Gtk.ScrolledWindow()
@@ -369,63 +404,29 @@ class NotePreviewCard(Gtk.FlowBoxChild):
         self.apply_preview_css()
 
     def apply_preview_css(self):
-        if not NotePreviewCard._base_css_applied:
-            css = """
-            .card {
-                border-radius: 12px;
-                border: 1px solid rgba(0,0,0,0.1);
-                transition: all 200ms ease;
-                background-color: #ffffff;
-                padding: 6px;
-            }
-            
-            .card:hover {
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-                transform: translateY(-2px);
-            }
-            
-            .color-indicator {
-                border-radius: 50%;
-                min-width: 12px;
-                min-height: 12px;
-                margin: 2px;
-                border: 1px solid rgba(0,0,0,0.1);
-            }
-            """
-            
-            for color, value in self._color_styles.items():
-                css += f"""
-                .color-indicator.{color} {{
-                    background-color: {value};
-                }}
-                """
-            
-            try:
-                css_provider = Gtk.CssProvider()
-                css_provider.load_from_data(css.encode('utf-8'))
-                Gtk.StyleContext.add_provider_for_display(
-                    Gdk.Display.get_default(),
-                    css_provider,
-                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-                )
-                NotePreviewCard._base_css_applied = True
-            except Exception as e:
-                print(f"Error applying base CSS: {e}")
+        # This method is now a no-op since CSS is loaded from file
+        pass
 
     def update_preview(self, note_data):
         """Update the preview card with the given note data"""
+        title = note_data.get('title', '')
         content = note_data.get('content', '')
         color = note_data.get('color', 'yellow')
         timestamp = note_data.get('timestamp')
         
-        if content:
-            preview_text = '\n'.join(content.split('\n')[:6])
-            if len(preview_text) > 150:
-                preview_text = preview_text[:147] + '...'
-            self.content_label.set_text(preview_text)
+        # Actualizar título
+        if title and isinstance(title, str) and title.strip():
+            self.title_label.set_text(title)
+            self.title_label.set_visible(True)
         else:
-            self.content_label.set_text("(Nota vacía)")
+            lines = content.strip().split('\n')
+            if lines and lines[0].strip():
+                self.title_label.set_text(lines[0].strip())
+            else:
+                self.title_label.set_text("Nota sin título")
+            self.title_label.set_visible(True)
         
+        # Actualizar fecha (siempre visible)
         if timestamp:
             try:
                 dt = datetime.fromisoformat(timestamp)
@@ -433,15 +434,32 @@ class NotePreviewCard(Gtk.FlowBoxChild):
                 self.date_label.set_text(date_str)
             except:
                 self.date_label.set_text("")
+        else:
+            self.date_label.set_text("")
         
+        # Actualizar contenido
+        if content:
+            preview_lines = content.split('\n')[1:6] if title else content.split('\n')[:6]
+            preview_text = '\n'.join(preview_lines)
+            if len(preview_text) > 150:
+                preview_text = preview_text[:147] + '...'
+            self.content_label.set_text(preview_text)
+        else:
+            self.content_label.set_text("(Nota vacía)")
+        
+        # Actualizar color
         for c in self._color_styles.keys():
             self.color_indicator.remove_css_class(c)
         self.color_indicator.add_css_class('color-indicator')
         self.color_indicator.add_css_class(color)
         
+        # Mostrar todos los widgets
         self.show()
         self.card.show()
         self.title_box.show()
+        self.header_box.show()
+        self.title_label.show()
+        self.date_label.show()
         self.content_label.show()
         self.color_indicator.show()
 
@@ -456,6 +474,8 @@ class NotePreviewCard(Gtk.FlowBoxChild):
         )
         
         note_data = {
+            'id': note.note_id,
+            'title': note.title if hasattr(note, 'title') and note.title else '',
             'content': content,
             'color': note.color,
             'timestamp': datetime.now().isoformat()

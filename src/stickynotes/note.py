@@ -35,6 +35,10 @@ class StickyNote(Gtk.ApplicationWindow):
         # Datos de la nota
         self.note_id = note_data.get('id', str(uuid.uuid4())) if note_data else str(uuid.uuid4())
         self.color = note_data.get('color', 'yellow') if note_data else 'yellow'
+        self.title = note_data.get('title', '') if note_data else ''
+        
+        # Ensure CSS is loaded
+        self.load_css()
         
         # Initialize window position tracking
         self.initial_window_x = note_data.get('x', 100) if note_data else 100
@@ -85,6 +89,37 @@ class StickyNote(Gtk.ApplicationWindow):
         
         # Conectar eventos para auto-guardado
         self.text_view.get_buffer().connect('changed', self.on_text_changed)
+        
+    def load_css(self):
+        """Cargar estilos CSS desde el archivo"""
+        try:
+            css_provider = Gtk.CssProvider()
+            css_file = Gio.File.new_for_path('/home/kooke/Proyectos/stickynotes/src/stickynotes/css/note.css')
+            
+            # Leer el contenido del archivo y reemplazar UNIQUE_ID
+            success, contents, _ = css_file.load_contents()
+            if success:
+                css_text = contents.decode('utf-8')
+                css_text = css_text.replace('UNIQUE_ID', self.note_id.replace('-', ''))
+                css_provider.load_from_data(css_text.encode('utf-8'))
+                
+                # Obtener el contexto de estilo y aplicar el proveedor
+                style_context = self.get_style_context()
+                style_context.add_provider(
+                    css_provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+                
+                # Agregar clases CSS necesarias
+                style_context.add_class('sticky-note')
+                style_context.add_class(f'sticky-note-{self.note_id.replace("-", "")}')
+                
+                print(f"Note CSS loaded successfully for note {self.note_id}")
+            else:
+                print("Failed to load CSS file contents")
+                
+        except Exception as e:
+            print(f"Error loading note CSS: {e}")
         
     def setup_ui(self):
         # Container principal
@@ -201,160 +236,26 @@ class StickyNote(Gtk.ApplicationWindow):
     def set_note_color(self, color):
         print(f"Changing note color to: {color}")
         
-        color_styles = {
-            'yellow': {
-                'background': '#ffeb3b',  # More saturated yellow
-                'border': '#ffd600',      # Slightly darker yellow border
-                'text': '#3e3500'         # Darker brown for better contrast with brighter yellow
-            },
-            'pink': {
-                'background': '#f8d7da',
-                'border': '#f5c6cb',
-                'text': '#721c24'  # Dark red for contrast with pink
-            },
-            'blue': {
-                'background': '#cce5ff',
-                'border': '#74b9ff',
-                'text': '#004085'  # Dark blue for contrast with light blue
-            },
-            'green': {
-                'background': '#d1ecf1',
-                'border': '#00b894',
-                'text': '#0c5460'  # Dark teal for contrast with green
-            },
-            'orange': {
-                'background': '#ffe8cc',
-                'border': '#fdcb6e',
-                'text': '#663c00'  # Dark brown for contrast with orange
-            },
-            'purple': {
-                'background': '#e2d5f1',
-                'border': '#a29bfe',
-                'text': '#4a235a'  # Dark purple for contrast with light purple
-            }
-        }
-        
-        if color not in color_styles:
+        # Validar el color
+        valid_colors = ['yellow', 'pink', 'blue', 'green', 'orange', 'purple']
+        if color not in valid_colors:
             print(f"Warning: Invalid color {color}, defaulting to yellow")
             color = 'yellow'
         
-        # Use the unique class for this note to ensure styles don't affect other notes
-        css = f"""
-        /* Base window styling - strong !important flag */
-        .{self.unique_class} {{
-            background-color: {color_styles[color]['background']} !important;
-            border: 2px solid {color_styles[color]['border']};
-            border-radius: 8px;
-            color: {color_styles[color]['text']} !important;
-        }}
+        # Obtener el contexto de estilo
+        style_context = self.get_style_context()
         
-        /* Force background color on all child elements */
-        .{self.unique_class} * {{
-            background-color: {color_styles[color]['background']} !important;
-        }}
+        # Remover colores anteriores
+        for c in valid_colors:
+            style_context.remove_class(c)
         
-        /* Text area specific styling with !important */
-        .{self.unique_class} textview,
-        .{self.unique_class} textview text,
-        .{self.unique_class} scrolledwindow,
-        .{self.unique_class} viewport {{
-            background-color: {color_styles[color]['background']} !important;
-            color: {color_styles[color]['text']} !important;
-            caret-color: {color_styles[color]['text']};
-        }}
+        # Agregar el nuevo color
+        style_context.add_class(color)
         
-        /* Handle text selection styling */
-        .{self.unique_class} textview text selection {{
-            background-color: alpha({color_styles[color]['text']}, 0.3);
-            color: {color_styles[color]['text']};
-        }}
+        # Almacenar el color
+        self.color = color
         
-        /* Enforce view background color for Gtk4 specifics */
-        .{self.unique_class} .view,
-        .{self.unique_class} GtkTextView {{
-            background-color: {color_styles[color]['background']} !important;
-            color: {color_styles[color]['text']} !important;
-        }}
-        
-        /* Ensure toolbar and all its contents get proper styling */
-        .{self.unique_class} box.toolbar,
-        .{self.unique_class} .toolbar {{
-            background-color: {color_styles[color]['background']} !important;
-            color: {color_styles[color]['text']} !important;
-            border: none;
-            border-radius: 6px;
-            padding: 6px;
-            min-height: 28px;
-            margin: 2px;
-        }}
-        
-        /* Keep buttons and icons visible with transparent background */
-        .{self.unique_class} button {{
-            background: transparent !important;
-            color: {color_styles[color]['text']} !important;
-        }}
-        
-        /* Add hover effect for better user feedback */
-        .{self.unique_class} button:hover {{
-            background: alpha({color_styles[color]['text']}, 0.1) !important;
-        }}
-        
-        /* Ensure icons maintain their colors - prevent colorization */
-        .{self.unique_class} button image {{
-            color: {color_styles[color]['text']};
-            -gtk-icon-filter: none;
-            background-color: transparent !important;
-        }}
-        
-        .{self.unique_class} .titlebar {{
-            background: transparent;
-            box-shadow: none;
-            min-height: 0;
-            padding: 0;
-            margin: 0;
-        }}
-        
-        .{self.unique_class} windowhandle {{
-            margin: 0;
-            padding: 0;
-            background: transparent;
-        }}
-        
-        .{self.unique_class} headerbar {{
-            background: transparent;
-            box-shadow: none;
-            min-height: 0;
-            padding: 0;
-            margin: 0;
-        }}
-        """
-        
-        try:
-            css_provider = Gtk.CssProvider()
-            css_provider.load_from_data(css.encode('utf-8'))
-            
-            # Get the style context for this widget
-            style_context = self.get_style_context()
-            
-            # Remove old provider if it exists
-            if hasattr(self, '_current_provider'):
-                style_context.remove_provider(self._current_provider)
-            
-            # Add the new provider to this widget only
-            style_context.add_provider(
-                css_provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            )
-            
-            # Store the current provider
-            self._current_provider = css_provider
-            print(f"Successfully applied {color} style")
-            
-            # Store the color
-            self.color = color
-            
-        except Exception as e:
-            print(f"Error applying CSS: {e}")
+        print(f"Successfully applied {color} style")
     
     def on_color_changed(self, action, parameter):
         # Handle the color parameter correctly
@@ -433,6 +334,11 @@ class StickyNote(Gtk.ApplicationWindow):
             False
         )
         
+        # Actualizar título si está vacío
+        if not self.title:
+            lines = content.strip().split('\n')
+            self.title = lines[0].strip() if lines and lines[0].strip() else "Nota sin título"
+        
         # Obtener posición - usar valores internos que mantenemos actualizados
         # durante las operaciones de arrastre
         x, y = self.window_x, self.window_y
@@ -440,6 +346,7 @@ class StickyNote(Gtk.ApplicationWindow):
         # Datos de la nota
         note_data = {
             'id': self.note_id,
+            'title': self.title,
             'content': content,
             'color': self.color,
             'x': x,

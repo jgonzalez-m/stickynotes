@@ -1,0 +1,138 @@
+/* Estilos base que se adaptan al tema del sistema */
+.card {
+    border-radius: 12px;
+    border: 1px solid;
+    border-color: @borders; /* Variable de Adwaita para bordes */
+    transition: all 200ms ease;
+    background-color: @card_bg_color; /* Variable de Adwaita para fondo de cards */
+    padding: 6px;
+}
+
+.card:hover {
+    box-shadow: 0 2px 6px alpha(@borders, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Adaptación para tema oscuro */
+@media (prefers-color-scheme: dark) {
+    .card {
+        background-color: @card_bg_color;
+        border-color: alpha(@borders, 0.3);
+    }
+
+    .card:hover {
+        box-shadow: 0 2px 6px alpha(black, 0.5);
+    }
+}
+
+/* Card color variants - con adaptación automática */
+.card.yellow {
+    border-color: #fbc02d; /* Amarillo más saturado para mejor contraste */
+}
+
+.card.pink {
+    border-color: #e91e63; /* Rosa más saturado */
+}
+
+.card.blue {
+    border-color: #2196f3; /* Azul más saturado */
+}
+
+.card.green {
+    border-color: #4caf50; /* Verde más saturado */
+}
+
+.card.orange {
+    border-color: #ff9800; /* Naranja más saturado */
+}
+
+.card.purple {
+    border-color: #9c27b0; /* Púrpura más saturado */
+}
+
+/* Adaptación de colores para tema oscuro */
+@media (prefers-color-scheme: dark) {
+    .card.yellow {
+        border-color: #ffeb3b;
+    }
+
+    .card.pink {
+        border-color: #f48fb1;
+    }
+
+    .card.blue {
+        border-color: #64b5f6;
+    }
+
+    .card.green {
+        border-color: #81c784;
+    }
+
+    .card.orange {
+        border-color: #ffb74d;
+    }
+
+    .card.purple {
+        border-color: #ba68c8;
+    }
+}
+
+.color-indicator {
+    border-radius: 50%;
+    min-width: 12px;
+    min-height: 12px;
+    margin: 2px;
+    border: 1px solid alpha(@borders, 0.3);
+}
+
+/* Color indicator variants - tema claro */
+.color-indicator.yellow {
+    background-color: #ffeb3b;
+}
+
+.color-indicator.pink {
+    background-color: #f8d7da;
+}
+
+.color-indicator.blue {
+    background-color: #cce5ff;
+}
+
+.color-indicator.green {
+    background-color: #d1ecf1;
+}
+
+.color-indicator.orange {
+    background-color: #ffe8cc;
+}
+
+.color-indicator.purple {
+    background-color: #e2d5f1;
+}
+
+/* Color indicators adaptados para tema oscuro */
+@media (prefers-color-scheme: dark) {
+    .color-indicator.yellow {
+        background-color: #fbc02d;
+    }
+
+    .color-indicator.pink {
+        background-color: #e91e63;
+    }
+
+    .color-indicator.blue {
+        background-color: #2196f3;
+    }
+
+    .color-indicator.green {
+        background-color: #4caf50;
+    }
+
+    .color-indicator.orange {
+        background-color: #ff9800;
+    }
+
+    .color-indicator.purple {
+        background-color: #9c27b0;
+    }
+}

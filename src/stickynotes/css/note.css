@@ -1,0 +1,125 @@
+/* Base window styling - strong !important flag */
+.sticky-note-UNIQUE_ID {
+    background-color: var(--note-background-color) !important;
+    border: 2px solid var(--note-border-color);
+    border-radius: 8px;
+    color: var(--note-text-color) !important;
+}
+
+/* Force background color on all child elements */
+.sticky-note-UNIQUE_ID * {
+    background-color: var(--note-background-color) !important;
+}
+
+/* Text area specific styling with !important */
+.sticky-note-UNIQUE_ID textview,
+.sticky-note-UNIQUE_ID textview text,
+.sticky-note-UNIQUE_ID scrolledwindow,
+.sticky-note-UNIQUE_ID viewport {
+    background-color: var(--note-background-color) !important;
+    color: var(--note-text-color) !important;
+    caret-color: var(--note-text-color);
+}
+
+/* Handle text selection styling */
+.sticky-note-UNIQUE_ID textview text selection {
+    background-color: alpha(var(--note-text-color), 0.3);
+    color: var(--note-text-color);
+}
+
+/* Enforce view background color for Gtk4 specifics */
+.sticky-note-UNIQUE_ID .view,
+.sticky-note-UNIQUE_ID GtkTextView {
+    background-color: var(--note-background-color) !important;
+    color: var(--note-text-color) !important;
+}
+
+/* Ensure toolbar and all its contents get proper styling */
+.sticky-note-UNIQUE_ID box.toolbar,
+.sticky-note-UNIQUE_ID .toolbar {
+    background-color: var(--note-background-color) !important;
+    color: var(--note-text-color) !important;
+    border: none;
+    border-radius: 6px;
+    padding: 6px;
+    min-height: 28px;
+    margin: 2px;
+}
+
+/* Keep buttons and icons visible with transparent background */
+.sticky-note-UNIQUE_ID button {
+    background: transparent !important;
+    color: var(--note-text-color) !important;
+}
+
+/* Add hover effect for better user feedback */
+.sticky-note-UNIQUE_ID button:hover {
+    background: alpha(var(--note-text-color), 0.1) !important;
+}
+
+/* Ensure icons maintain their colors - prevent colorization */
+.sticky-note-UNIQUE_ID button image {
+    color: var(--note-text-color);
+    -gtk-icon-filter: none;
+    background-color: transparent !important;
+}
+
+.sticky-note-UNIQUE_ID .titlebar {
+    background: transparent;
+    box-shadow: none;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.sticky-note-UNIQUE_ID windowhandle {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.sticky-note-UNIQUE_ID headerbar {
+    background: transparent;
+    box-shadow: none;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* Color definitions for different note colors */
+.sticky-note-UNIQUE_ID.yellow {
+    --note-background-color: #ffeb3b;
+    --note-border-color: #ffd600;
+    --note-text-color: #3e3500;
+}
+
+.sticky-note-UNIQUE_ID.pink {
+    --note-background-color: #f8d7da;
+    --note-border-color: #f5c6cb;
+    --note-text-color: #721c24;
+}
+
+.sticky-note-UNIQUE_ID.blue {
+    --note-background-color: #cce5ff;
+    --note-border-color: #74b9ff;
+    --note-text-color: #004085;
+}
+
+.sticky-note-UNIQUE_ID.green {
+    --note-background-color: #d1ecf1;
+    --note-border-color: #00b894;
+    --note-text-color: #0c5460;
+}
+
+.sticky-note-UNIQUE_ID.orange {
+    --note-background-color: #ffe8cc;
+    --note-border-color: #fdcb6e;
+    --note-text-color: #663c00;
+}
+
+.sticky-note-UNIQUE_ID.purple {
+    --note-background-color: #e2d5f1;
+    --note-border-color: #a29bfe;
+    --note-text-color: #4a235a;
+}
+
