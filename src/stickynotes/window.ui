@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.0"/>
+  <template class="StickyNotesWindow" parent="AdwApplicationWindow">
+    <property name="default-width">400</property>
+    <property name="default-height">300</property>
+    <property name="title">Sticky Notes</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar" id="header_bar">
+            <property name="title-widget">
+              <object class="AdwWindowTitle">
+                <property name="title">Sticky Notes</property>
+              </object>
+            </property>
+            <child type="end">
+              <object class="GtkButton" id="new_note_button">
+                <property name="icon-name">list-add-symbolic</property>
+                <property name="tooltip-text">Nueva Nota (Ctrl+N)</property>
+                <property name="action-name">win.new-note</property>
+              </object>
+            </child>
+            <child type="end">
+              <object class="GtkMenuButton">
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="tooltip-text">Menú principal</property>
+                <property name="menu-model">primary_menu</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="AdwClamp">
+            <property name="maximum-size">800</property>
+            <property name="margin-top">6</property>
+            <property name="margin-bottom">6</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <child>
+              <object class="GtkSearchEntry" id="search_entry">
+                <property name="placeholder-text">Buscar notas...</property>
+                <property name="hexpand">True</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="AdwClamp">
+            <property name="maximum-size">1200</property>
+            <property name="margin-top">12</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <property name="vexpand">true</property>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">12</property>
+                <child>
+                  <object class="GtkBox" id="empty_state_box">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">12</property>
+                    <property name="valign">center</property>
+                    <property name="vexpand">true</property>
+                    <property name="visible">false</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">org.gnome.StickyNotes</property>
+                        <property name="pixel-size">128</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label">No hay notas</property>
+                        <style>
+                          <class name="title-1"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label">Haz clic en "+" para crear tu primera nota</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="welcome_new_note">
+                        <property name="label">Crear Primera Nota</property>
+                        <property name="halign">center</property>
+                        <property name="action-name">win.new-note</property>
+                        <style>
+                          <class name="pill"/>
+                          <class name="suggested-action"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow">
+                    <property name="vexpand">true</property>
+                    <property name="min-content-height">300</property>
+                    <child>
+                      <object class="GtkFlowBox" id="notes_grid">
+                        <property name="homogeneous">true</property>
+                        <property name="selection-mode">none</property>
+                        <property name="max-children-per-line">20</property>
+                        <property name="min-children-per-line">1</property>
+                        <property name="row-spacing">12</property>
+                        <property name="column-spacing">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+  <menu id="primary_menu">
+    <section>
+      <item>
+        <attribute name="label">Nueva Nota</attribute>
+        <attribute name="action">app.new-note</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label">Acerca de Sticky Notes</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

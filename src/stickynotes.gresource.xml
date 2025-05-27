@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gnome/StickyNotes">
+    <file preprocess="xml-stripblanks">stickynotes/window.ui</file>
+    <file preprocess="xml-stripblanks">stickynotes/gtk/help-overlay.ui</file>
+  </gresource>
+</gresources>

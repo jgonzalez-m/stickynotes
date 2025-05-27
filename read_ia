@@ -1,0 +1,15 @@
+Aplicación iniciada a las 20:15:55
+                                  Loading resources from: /app/share/stickynotes/stickynotes.gresource
+Resource registered successfully
+Found resource: stickynotes/
+Traceback (most recent call last):
+  File "/app/bin/stickynotes", line 65, in <module>
+    from stickynotes import main
+  File "/app/share/stickynotes/stickynotes/main.py", line 47, in <module>
+    from .window import StickyNotesWindow, StickyNote
+  File "/app/share/stickynotes/stickynotes/window.py", line 232
+    note_data = note.save_note()
+IndentationError: expected an indented block after 'if' statement on line 229
+Aplicación terminada
+
+

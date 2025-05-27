@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="sticky-notes">
+  <schema id="org.gnome.StickyNotes" path="/org/gnome/StickyNotes/">
+    <key name="default-color" type="s">
+      <default>'yellow'</default>
+      <summary>Default color for new notes</summary>
+      <description>The default color to use when creating new sticky notes</description>
+    </key>
+
+    <key name="auto-save-interval" type="i">
+      <default>1000</default>
+      <summary>Auto-save interval</summary>
+      <description>Interval in milliseconds for auto-saving notes</description>
+    </key>
+
+    <key name="sync-enabled" type="b">
+      <default>false</default>
+      <summary>Enable synchronization</summary>
+      <description>Whether to enable note synchronization across devices</description>
+    </key>
+
+    <key name="sync-server" type="s">
+      <default>''</default>
+      <summary>Synchronization server</summary>
+      <description>Server URL for note synchronization</description>
+    </key>
+
+    <key name="default-note-width" type="i">
+      <default>250</default>
+      <summary>Default note width</summary>
+      <description>Default width for new sticky notes</description>
+    </key>
+
+    <key name="default-note-height" type="i">
+      <default>200</default>
+      <summary>Default note height</summary>
+      <description>Default height for new sticky notes</description>
+    </key>
+  </schema>
+</schemalist>

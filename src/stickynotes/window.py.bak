@@ -1,0 +1,519 @@
+# window.py
+#
+# Copyright 2025 jorge gonzalez m
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# window.py
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+
+from gi.repository import Gtk, Adw, Gio, GLib, Gdk, Pango
+from .note import StickyNote  # This is the only StickyNote import we need
+import json
+from datetime import datetime
+
+@Gtk.Template(resource_path='/org/gnome/StickyNotes/stickynotes/window.ui')
+class StickyNotesWindow(Adw.ApplicationWindow):
+    __gtype_name__ = 'StickyNotesWindow'
+    
+    # Reference the new UI elements from the template
+    search_entry = Gtk.Template.Child()
+    notes_grid = Gtk.Template.Child()
+    empty_state_box = Gtk.Template.Child()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        # Initialize storage
+        self.notes = {}  # Dictionary to store note references by ID
+        self.note_previews = {}  # Dictionary to store note preview widgets by ID
+        
+        # Set up actions and search
+        self.setup_actions()
+        self.setup_search()
+        
+        # Configure FlowBox (notes_grid)
+        self.notes_grid.set_valign(Gtk.Align.START)
+        self.notes_grid.set_halign(Gtk.Align.FILL)
+        self.notes_grid.set_hexpand(True)
+        self.notes_grid.set_vexpand(True)
+        self.notes_grid.set_homogeneous(True)
+        self.notes_grid.set_selection_mode(Gtk.SelectionMode.NONE)
+        
+        # Empty state setup
+        self.empty_state_box.set_valign(Gtk.Align.CENTER)
+        self.empty_state_box.set_visible(True)
+        
+        # Load notes after initialization
+        GLib.idle_add(self.load_notes)
+        
+        # Show window
+        self.present()
+        
+    def load_notes(self):
+        """Load notes from application storage and create previews"""
+        app = self.get_application()
+        if not app:
+            print("No application found")
+            return False
+        
+        print("\n=== Loading notes in main window ===")
+        
+        # Get notes
+        stored_notes = app.notes
+        active_notes = app.get_notes()
+        
+        print(f"Found {len(stored_notes)} stored notes and {len(active_notes)} active notes")
+        
+        # Clear existing previews
+        child = self.notes_grid.get_first_child()
+        while child:
+            next_child = child.get_next_sibling()
+            self.notes_grid.remove(child)
+            child = next_child
+        self.note_previews.clear()
+        self.notes.clear()
+        
+        # Process all notes
+        processed_notes = {}
+        
+        # First, add all active notes
+        for note_id, note in active_notes.items():
+            print(f"Processing active note: {note_id}")
+            processed_notes[note_id] = note
+            
+            # Create preview
+            preview = NotePreviewCard(note)
+            preview.connect('activate', self.on_note_preview_activated)
+            self.notes_grid.append(preview)
+            self.note_previews[note_id] = preview
+            self.notes[note_id] = note
+        
+        # Then, process stored notes that aren't active
+        for note_id, note_data in stored_notes.items():
+            if note_id not in processed_notes:
+                print(f"Processing stored note: {note_id}")
+                note = StickyNote(app, note_data)
+                note.set_visible(False)  # Don't show the note window yet
+                
+                # Create preview
+                preview = NotePreviewCard(note)
+                preview.connect('activate', self.on_note_preview_activated)
+                self.notes_grid.append(preview)
+                self.note_previews[note_id] = preview
+                self.notes[note_id] = note
+        
+        # Update visibility based on note count
+        notes_exist = bool(self.notes)
+        print(f"Notes exist: {notes_exist}")
+        
+        self.empty_state_box.set_visible(not notes_exist)
+        self.notes_grid.get_parent().set_visible(notes_exist)  # Show/hide ScrolledWindow
+        self.notes_grid.set_visible(notes_exist)
+        
+        if notes_exist:
+            print("Making sure all previews are visible")
+            self.notes_grid.show()
+            child = self.notes_grid.get_first_child()
+            while child:
+                child.set_visible(True)
+                child.show()
+                child = child.get_next_sibling()
+        
+        # Debug output
+        self.debug_grid_state()
+        
+        return False
+        
+    def setup_actions(self):
+        # Acción para crear nueva nota
+        new_note_action = Gio.SimpleAction.new('new-note', None)
+        new_note_action.connect('activate', self.on_new_note)
+        self.add_action(new_note_action)
+        
+        # Acción para mostrar/ocultar ventana principal
+        toggle_action = Gio.SimpleAction.new('toggle-window', None)
+        toggle_action.connect('activate', self.on_toggle_window)
+        self.add_action(toggle_action)
+    
+    def setup_search(self):
+        # Connect search entry to filter function
+        self.search_entry.connect('search-changed', self.on_search_changed)
+        
+    def on_search_changed(self, search_entry):
+        search_text = search_entry.get_text().lower()
+        self.filter_notes(search_text)
+    
+    def filter_notes(self, search_text):
+        has_visible_notes = False
+        
+        # If search text is empty, show all notes
+        if not search_text:
+            for preview in self.note_previews.values():
+                preview.set_visible(True)
+                has_visible_notes = True
+        else:
+            # Otherwise, show only notes that match the search
+            for note_id, note in self.notes.items():
+                if note_id in self.note_previews:
+                    preview = self.note_previews[note_id]
+                    
+                    # Get note data
+                    note_data = note.save_note()
+                    content = note_data.get('content', '').lower()
+                    
+                    # Show the preview if the content contains the search text
+                    visible = search_text in content
+                    preview.set_visible(visible)
+                    if visible:
+                        has_visible_notes = True
+        
+        # Update empty state based on visible notes
+        self.empty_state_box.set_visible(not has_visible_notes)
+        self.notes_grid.set_visible(has_visible_notes)
+    
+    def update_notes_grid(self):
+        """Update the grid with current notes"""
+        app = self.get_application()
+        if not app:
+            print("No application found")
+            return False
+        
+        print("Updating notes grid")
+        
+        # Get current notes
+        active_notes = app.get_notes()
+        stored_notes = app.notes
+        
+        # Remove previews for notes that no longer exist
+        notes_to_remove = []
+        for note_id in self.note_previews:
+            if note_id not in stored_notes and note_id not in active_notes:
+                notes_to_remove.append(note_id)
+        
+        for note_id in notes_to_remove:
+            preview = self.note_previews[note_id]
+            if preview.get_parent():
+                self.notes_grid.remove(preview)
+            del self.note_previews[note_id]
+            if note_id in self.notes:
+                del self.notes[note_id]
+            print(f"Removed note {note_id} from grid")
+        
+        # Update existing previews and add new ones
+        for note_id, note_data in stored_notes.items():
+            # If note is active, use the window
+            if note_id in active_notes:
+                note = active_notes[note_id]
+            else:
+                # Otherwise create a temporary note object
+                note = StickyNote(app, note_data)
+            
+            self.notes[note_id] = note
+            
+            if note_id in self.note_previews:
+                # Update existing preview
+                self.note_previews[note_id].update_from_note(note)
+                print(f"Updated preview for note {note_id}")
+            else:
+                # Create new preview
+                preview = NotePreviewCard(note)
+                preview.connect('activate', self.on_note_preview_activated)
+                preview.set_visible(True)
+                self.notes_grid.append(preview)
+                self.note_previews[note_id] = preview
+                print(f"Added new preview for note {note_id}")
+        
+        # Update visibility
+        if self.notes:
+            self.empty_state_box.set_visible(False)
+            self.notes_grid.set_visible(True)
+            child = self.notes_grid.get_first_child()
+            while child:
+                child.show()
+                child = child.get_next_sibling()
+        else:
+            self.empty_state_box.set_visible(True)
+            self.notes_grid.set_visible(False)
+        
+        # Apply current search filter if exists
+        if self.search_entry.get_text():
+            self.filter_notes(self.search_entry.get_text().lower())
+        
+        return False
+    
+    def on_note_preview_activated(self, preview):
+        # When a note preview is clicked, present the actual note window
+        note_id = preview.note_id
+        if note_id in self.notes:
+            note = self.notes[note_id]
+            note.present()
+            print(f"Presenting note {note_id}")  # Debug log
+    
+    def add_note(self, note):
+        # Called when a new note is created
+        self.notes[note.note_id] = note
+        print(f"Adding note {note.note_id} to grid")  # Debug log
+        self.update_notes_grid()
+        
+    def remove_note(self, note_id):
+        # Called when a note is closed/deleted
+        if note_id in self.notes:
+            del self.notes[note_id]
+        if note_id in self.note_previews:
+            preview = self.note_previews[note_id]
+            self.notes_grid.remove(preview)
+            del self.note_previews[note_id]
+            
+        # Check if we need to show the empty state
+        if not self.notes:
+            self.empty_state_box.set_visible(True)
+            self.notes_grid.set_visible(False)
+            
+    def on_new_note(self, action, parameter):
+        app = self.get_application()
+        note = app.create_new_note()
+        if note:
+            self.add_note(note)
+    
+    def on_toggle_window(self, action, parameter):
+        if self.is_visible():
+            self.hide()
+        else:
+            self.update_notes_grid()  # Refresh notes when showing window
+            self.present()
+            
+    def debug_grid_state(self):
+        """Print debug information about the grid state"""
+        print("\nGrid State Debug:")
+        print(f"Grid visible: {self.notes_grid.get_visible()}")
+        print(f"Empty state visible: {self.empty_state_box.get_visible()}")
+        print(f"Number of notes: {len(self.notes)}")
+        print(f"Number of previews: {len(self.note_previews)}")
+        print("Grid children:")
+        child = self.notes_grid.get_first_child()
+        while child:
+            print(f"  - Child visible: {child.get_visible()}")
+            child = child.get_next_sibling()
+
+
+# NotePreviewCard class for displaying notes in the grid
+class NotePreviewCard(Gtk.FlowBoxChild):
+    # Class-level variables for shared CSS
+    _base_css_applied = False
+    _color_css_provider = None
+    _color_styles = {
+        'yellow': '#ffeb3b',
+        'pink': '#f8d7da',
+        'blue': '#cce5ff',
+        'green': '#d1ecf1',
+        'orange': '#ffe8cc',
+        'purple': '#e2d5f1'
+    }
+    
+    def __init__(self, note):
+        Gtk.FlowBoxChild.__init__(self)
+        self.note = note
+        self.note_id = note.note_id
+        
+        # Set initial properties
+        # Note: set_activatable is not available in Gtk.FlowBoxChild in GTK4
+        self.set_visible(True)
+        self.set_can_focus(True)
+        
+        # Create and show the UI
+        self.setup_ui()
+        
+        # Update with note data
+        self.update_from_note(note)
+        
+        # Add click gesture
+        click = Gtk.GestureClick.new()
+        click.connect('pressed', self.on_click_pressed)
+        self.add_controller(click)
+        
+        # Ensure visibility
+        self.show()
+        
+    def on_click_pressed(self, gesture, n_press, x, y):
+        # Emit activate signal when clicked
+        self.activate()
+        
+    def setup_ui(self):
+        # Create a card with note preview
+        self.card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.card.set_size_request(200, 150)
+        self.card.add_css_class('card')
+        self.card.set_margin_top(6)
+        self.card.set_margin_bottom(6)
+        self.card.set_margin_start(6)
+        self.card.set_margin_end(6)
+        
+        # Set size and visibility
+        self.set_size_request(220, 170)  # Account for margins
+        self.set_visible(True)
+        self.set_hexpand(True)
+        
+        # Title area
+        self.title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.title_box.set_margin_top(8)
+        self.title_box.set_margin_bottom(4)
+        self.title_box.set_margin_start(8)
+        self.title_box.set_margin_end(8)
+        
+        # Date label
+        self.date_label = Gtk.Label()
+        self.date_label.set_halign(Gtk.Align.START)
+        self.date_label.set_hexpand(True)
+        self.date_label.add_css_class('caption')
+        self.date_label.add_css_class('dim-label')
+        
+        # Color indicator
+        self.color_indicator = Gtk.Box()
+        self.color_indicator.set_size_request(16, 16)
+        self.color_indicator.add_css_class('color-indicator')
+        
+        # Add to title box
+        self.title_box.append(self.date_label)
+        self.title_box.append(self.color_indicator)
+        
+        # Content preview
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_vexpand(True)
+        
+        self.content_label = Gtk.Label()
+        self.content_label.set_halign(Gtk.Align.START)
+        self.content_label.set_valign(Gtk.Align.START)
+        self.content_label.set_hexpand(True)
+        self.content_label.set_vexpand(True)
+        self.content_label.set_margin_start(8)
+        self.content_label.set_margin_end(8)
+        self.content_label.set_margin_bottom(8)
+        self.content_label.set_max_width_chars(25)
+        self.content_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.content_label.set_lines(6)
+        self.content_label.set_wrap(True)
+        self.content_label.set_wrap_mode(Pango.WrapMode.WORD)
+        self.content_label.set_xalign(0)
+        self.content_label.set_yalign(0)
+        
+        scrolled.set_child(self.content_label)
+        
+        # Add components to the card
+        self.card.append(self.title_box)
+        self.card.append(scrolled)
+        
+        # Add to this widget
+        self.set_child(self.card)
+        
+        # Ensure the card and its contents are visible
+        self.card.set_visible(True)
+        self.title_box.set_visible(True)
+        self.content_label.set_visible(True)
+        
+        # Apply global CSS for note previews
+        self.apply_preview_css()
+    
+    def apply_preview_css(self):
+        # Apply base CSS only once for all previews
+        if not NotePreviewCard._base_css_applied:
+            css = """
+            .card {
+                border-radius: 12px;
+                border: 1px solid rgba(0,0,0,0.1);
+                transition: all 200ms ease;
+                background-color: #ffffff;
+                padding: 6px;
+            }
+            
+            .card:hover {
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                transform: translateY(-2px);
+            }
+            
+            .color-indicator {
+                border-radius: 50%;
+                min-width: 12px;
+                min-height: 12px;
+                margin: 2px;
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            """
+            
+            # Create CSS for all color indicators
+            for color, value in self._color_styles.items():
+                css += f"""
+                .color-indicator.{color} {{
+                    background-color: {value};
+                }}
+                """
+            
+            try:
+                css_provider = Gtk.CssProvider()
+                # In GTK4, load_from_string is replaced with load_from_data
+                css_provider.load_from_data(css.encode('utf-8'))
+                Gtk.StyleContext.add_provider_for_display(
+                    Gdk.Display.get_default(),
+                    css_provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+                NotePreviewCard._base_css_applied = True
+            except Exception as e:
+                print(f"Error applying base CSS: {e}")
+                
+    def update_from_note(self, note):
+        # Update preview with data from the note
+        note_data = note.save_note()
+        
+        # Update content preview
+        content = note_data.get('content', '')
+        if content:
+            # Limit to first few lines for preview
+            preview_text = '\n'.join(content.split('\n')[:6])
+            if len(preview_text) > 150:
+                preview_text = preview_text[:147] + '...'
+            self.content_label.set_text(preview_text)
+        else:
+            self.content_label.set_text("(Nota vacía)")
+        
+        # Update date
+        timestamp = note_data.get('timestamp')
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp)
+                date_str = dt.strftime("%d/%m/%Y")
+                self.date_label.set_text(date_str)
+            except:
+                self.date_label.set_text("")
+        
+        # Update color indicator - simplified approach
+        color = note_data.get('color', 'yellow')
+        # Remove all color classes first
+        for c in self._color_styles.keys():
+            self.color_indicator.remove_css_class(c)
+        # Add the new color class
+        self.color_indicator.add_css_class('color-indicator')
+        self.color_indicator.add_css_class(color)
+        
+        # Ensure preview is visible
+        self.show()
+        self.card.show()
+        self.title_box.show()
+        self.content_label.show()
+        self.color_indicator.show()
